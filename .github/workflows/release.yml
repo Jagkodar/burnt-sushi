@@ -46,11 +46,11 @@ jobs:
         run: cargo build --release --manifest-path=burnt-sushi/Cargo.toml
 
       - name: Rename portable exe
-        run: Copy-Item "burnt-sushi/target/x86_64-pc-windows-msvc/release/BurntSushi.exe" "BurntSushi-x86_64.exe"
+        run: Copy-Item "burnt-sushi/target/release/BurntSushi.exe" "BurntSushi.exe"
 
       - name: Build MSI installer
         working-directory: burnt-sushi
-        run: cargo wix --nocapture --output ../BurntSushi-x86_64.msi
+        run: cargo wix --nocapture --output ../BurntSushi.msi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
