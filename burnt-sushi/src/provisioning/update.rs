@@ -13,7 +13,7 @@ use self_update::update::Release;
 use tokio::fs::{self, File};
 
 use super::{msi, network};
-use crate::{APP_AUTHOR, APP_NAME, APP_VERSION, toast};
+use crate::{APP_AUTHOR, APP_NAME, APP_VERSION, args::ARGS, toast};
 
 const UPDATE_CHECK_INTERVAL: Duration = Duration::from_hours(168);
 
@@ -84,6 +84,10 @@ fn current_exe() -> anyhow::Result<PathBuf> {
 }
 
 async fn should_check_for_update() -> bool {
+    if ARGS.check_for_update {
+        return true;
+    }
+
     if network::is_metered_connection() {
         debug!("Skipping update check, connection is metered");
         return false;

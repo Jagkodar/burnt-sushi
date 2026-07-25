@@ -66,6 +66,10 @@ pub struct Args {
 
     #[arg(long, hide = true)]
     pub force_restart: bool,
+
+    /// Force an update check, bypassing the metered-connection skip and the once-a-week throttle.
+    #[arg(long)]
+    pub check_for_update: bool,
 }
 
 #[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
