@@ -96,6 +96,10 @@ async fn main() {
     );
     trace!("Running with {:#?}", LazyLock::get(&ARGS).unwrap());
 
+    for arg in args::IGNORED_ARGS.get().into_iter().flatten() {
+        warn!("Ignoring unknown argument: {arg}");
+    }
+
     if ARGS.install {
         match provisioning::install::install().await {
             Ok(()) => info!("App successfully installed."),

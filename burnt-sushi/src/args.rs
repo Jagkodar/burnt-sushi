@@ -1,15 +1,51 @@
-use std::{path::PathBuf, sync::LazyLock};
+use std::{
+    env,
+    ffi::OsString,
+    path::PathBuf,
+    sync::{LazyLock, OnceLock},
+};
 
-use clap::{Parser, ValueEnum};
+use clap::{Parser, ValueEnum, error::ContextKind};
 
 use crate::logger;
+
+pub static IGNORED_ARGS: OnceLock<Vec<String>> = OnceLock::new();
 
 pub static ARGS: LazyLock<Args> = LazyLock::new(|| {
     // Try to attach console for printing errors during argument parsing.
     logger::console::raw::attach();
 
-    Args::parse()
+    let (args, ignored) = parse_known_args();
+    let _ = IGNORED_ARGS.set(ignored);
+    args
 });
+
+fn parse_known_args() -> (Args, Vec<String>) {
+    let mut argv: Vec<OsString> = env::args_os().collect();
+    let mut ignored = Vec::new();
+
+    loop {
+        match Args::try_parse_from(&argv) {
+            Ok(args) => return (args, ignored),
+            Err(err) if err.kind() == clap::error::ErrorKind::UnknownArgument => {
+                let bad_arg = err
+                    .context()
+                    .find(|(kind, _)| *kind == ContextKind::InvalidArg)
+                    .map(|(_, value)| value.to_string());
+
+                let Some(bad_arg) = bad_arg else {
+                    err.exit();
+                };
+                let Some(pos) = argv.iter().position(|arg| *arg == *bad_arg) else {
+                    err.exit();
+                };
+                argv.remove(pos);
+                ignored.push(bad_arg);
+            }
+            Err(err) => err.exit(),
+        }
+    }
+}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
