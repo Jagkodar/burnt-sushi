@@ -40,7 +40,7 @@
     <?define PlatformProgramFilesFolder = "ProgramFilesFolder"?>
 <?endif ?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-    <Product Id="*" Name="BurntSushi" UpgradeCode="31d49aef-51d9-4e4e-ac9e-bb0ebfdebca1" Manufacturer="OpenByte" Language="1033" Codepage="1252" Version="$(var.Version)">
+    <Product Id="*" Name="BurntSushi" UpgradeCode="c650b5a6-47f8-4234-80bd-ad8f367ebfdd" Manufacturer="OpenByte" Language="1033" Codepage="1252" Version="$(var.Version)">
         <Package InstallerVersion="500" Compressed="yes" InstallScope="perUser" />
         <MajorUpgrade AllowDowngrades="no" AllowSameVersionUpgrades="no" DowngradeErrorMessage="A newer version of [ProductName] is already installed. Setup will now exit." />
         
