@@ -46,7 +46,7 @@ mod toast;
 mod tray;
 
 const APP_NAME: &str = "BurntSushi";
-const APP_AUTHOR: &str = "OpenByteDev";
+const APP_AUTHOR: &str = "OpenByte";
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 const APP_NAME_WITH_VERSION: &str = concat!("BurntSushi v", env!("CARGO_PKG_VERSION"));
 const DEFAULT_BLOCKER_FILE_NAME: &str = "BurntSushiBlocker_x64.dll";
