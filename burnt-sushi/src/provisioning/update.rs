@@ -47,11 +47,19 @@ async fn touch_check_marker(marker: &Path) {
 }
 
 pub async fn update() -> anyhow::Result<bool> {
+    if msi::is_running_from_legacy_install() {
+        return migrate_legacy_install().await;
+    }
+
+    if let Err(e) = msi::cleanup_legacy_install().await {
+        error!("Failed to clean up legacy per-machine install: {e:#}");
+    }
+
     if !should_check_for_update().await {
         return Ok(false);
     }
 
-    let Some(release) = find_latest_release().await? else {
+    let Some(release) = find_latest_release(false).await? else {
         return Ok(false);
     };
 
@@ -92,7 +100,8 @@ async fn should_check_for_update() -> bool {
     true
 }
 
-async fn find_latest_release() -> anyhow::Result<Option<Release>> {
+/// Finds the latest release.
+async fn find_latest_release(force: bool) -> anyhow::Result<Option<Release>> {
     let releases = tokio::task::spawn_blocking(load_releases)
         .await
         .context("Failed to load releases")?
@@ -104,7 +113,13 @@ async fn find_latest_release() -> anyhow::Result<Option<Release>> {
         .max_by(|(_, v1), (_, v2)| v1.cmp(v2))
         .context("No valid release found")?;
 
-    if release_version <= lenient_semver::parse(APP_VERSION).unwrap() {
+    let current_version = lenient_semver::parse(APP_VERSION).unwrap();
+    let qualifies = if force {
+        release_version >= current_version
+    } else {
+        release_version > current_version
+    };
+    if !qualifies {
         info!("No new release found");
         return Ok(None);
     }
@@ -117,14 +132,41 @@ async fn perform_update(release: Release) -> anyhow::Result<bool> {
 
     let via_msi = msi::is_installed();
     let target_extension = if via_msi { "msi" } else { "exe" };
+    let tmp_bin_path = download_asset(release, target_extension).await?;
 
+    if via_msi {
+        update_via_msi(&tmp_bin_path, &current_exe).await?;
+    } else {
+        update_via_exe_swap(&tmp_bin_path, &current_exe).await?;
+    }
+
+    Ok(via_msi)
+}
+
+/// Installs the current version as a per-user MSI and restarts from there, recovering from
+/// the legacy exe-swap updater having placed this build inside the old per-machine install.
+async fn migrate_legacy_install() -> anyhow::Result<bool> {
+    let release = find_latest_release(true)
+        .await?
+        .context("No release found to migrate legacy install")?;
+    let msi_path = download_asset(release, "msi").await?;
+
+    let mut install_dir = dirs::data_local_dir().context("Failed to locate data directory")?;
+    install_dir.extend(["Programs", APP_AUTHOR, APP_NAME]);
+    msi::upgrade(&msi_path, &install_dir).await?;
+
+    restart(&install_dir.join(format!("{APP_NAME}.exe")), true)?;
+    Ok(true)
+}
+
+async fn download_asset(release: Release, extension: &str) -> anyhow::Result<PathBuf> {
     let asset = release
         .assets
         .into_iter()
         .find(|asset| {
             Path::new(&asset.name)
                 .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case(target_extension))
+                .is_some_and(|ext| ext.eq_ignore_ascii_case(extension))
         })
         .context("No matching release asset found")?;
 
@@ -137,7 +179,7 @@ async fn perform_update(release: Release) -> anyhow::Result<bool> {
         .prefix(APP_NAME)
         .tempdir()
         .context("Failed to create temporary directory")?;
-    let tmp_bin_path = tmp_dir.path().join(&asset.name);
+    let tmp_bin_path = tmp_dir.keep().join(&asset.name);
     let tmp_bin = File::create(&tmp_bin_path)
         .await
         .context("Error creating temporary file")?
@@ -151,13 +193,7 @@ async fn perform_update(release: Release) -> anyhow::Result<bool> {
 
     debug!("Downloaded asset to {}", tmp_bin_path.display());
 
-    if via_msi {
-        update_via_msi(&tmp_bin_path, &current_exe).await?;
-    } else {
-        update_via_exe_swap(&tmp_bin_path, &current_exe).await?;
-    }
-
-    Ok(via_msi)
+    Ok(tmp_bin_path)
 }
 
 async fn update_via_msi(msi_path: &Path, current_exe: &Path) -> anyhow::Result<()> {
