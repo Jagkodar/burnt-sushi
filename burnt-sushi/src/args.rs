@@ -48,7 +48,7 @@ fn parse_known_args() -> (Args, Vec<String>) {
 }
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None, args_override_self = true)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Args {
     /// Show a console window with debug output.
