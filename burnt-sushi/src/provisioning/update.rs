@@ -240,13 +240,9 @@ async fn update_via_exe_swap(tmp_bin_path: &Path, current_exe: &Path) -> anyhow:
 fn restart(new_exe: &Path, via_msi: bool) -> anyhow::Result<()> {
     let mut args: Vec<OsString> = env::args_os().skip(1).collect();
 
-    args.retain(|arg| arg != "--singleton-wait-for-shutdown");
     args.push("--singleton-wait-for-shutdown".into());
 
     if !via_msi {
-        if let Some(pos) = args.iter().position(|arg| arg == "--update-old-bin") {
-            args.drain(pos..pos + 2);
-        }
         args.push("--update-old-bin".into());
         args.push(new_exe.with_extension("exe.bak").into());
     }
