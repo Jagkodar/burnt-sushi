@@ -75,7 +75,7 @@ async fn main() {
 
     let mut log_file = ARGS.log_file.clone();
     if log_file.is_none() && ARGS.log_level == LogLevel::Debug {
-        let mut auto_log_file = dirs::data_dir();
+        let mut auto_log_file = dirs::data_local_dir();
         if let Some(ref mut log_file) = auto_log_file {
             log_file.push("OpenByte");
             log_file.push("BurntSushi");
