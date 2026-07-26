@@ -96,11 +96,6 @@ async fn main() {
         return;
     }
 
-    if let Some(old_bin_path) = &ARGS.update_old_bin {
-        info!("Removing old executable at {}.", old_bin_path.display());
-        tokio::task::spawn(tokio::fs::remove_file(old_bin_path));
-    }
-
     if ARGS.force_restart {
         match terminate_other_instances() {
             Ok(_) => debug!("Killed previously running instances"),
@@ -112,7 +107,7 @@ async fn main() {
     }
 
     if ARGS.ignore_singleton {
-        run().await;
+        run_singleton().await;
     } else {
         let lock = NamedMutex::new(&format!("{APP_NAME} SINGLETON MUTEX")).unwrap();
 
@@ -126,7 +121,7 @@ async fn main() {
         }
 
         match guard_result {
-            Ok(Some(_guard)) => run().await,
+            Ok(Some(_guard)) => run_singleton().await,
             Ok(None) => {
                 error!("App is already running. (use --ignore-singleton to ignore)\nExiting...");
             }
@@ -154,7 +149,18 @@ fn configure_log_file(mut path: Option<PathBuf>) {
     }
 }
 
-async fn run() {
+async fn run_singleton() {
+    if let Some(old_bin_path) = &ARGS.update_old_bin {
+        info!("Removing old executable at {}.", old_bin_path.display());
+        if let Err(e) = tokio::fs::remove_file(old_bin_path).await {
+            warn!("Failed to remove old executable: {e}");
+        }
+    }
+
+    run_app().await;
+}
+
+async fn run_app() {
     let mut system_tray = tray::SystemTrayManager::build_and_run().await.unwrap();
 
     let mut app = SpotifyAdBlocker::new();
