@@ -89,7 +89,7 @@ async fn main() {
     }
 
     if ARGS.install {
-        match provisioning::install::install().await {
+        match provisioning::install().await {
             Ok(()) => info!("App successfully installed."),
             Err(e) => error!("Failed to install application: {e}"),
         }
@@ -97,6 +97,7 @@ async fn main() {
     }
 
     if let Some(old_bin_path) = &ARGS.update_old_bin {
+        info!("Removing old executable at {}.", old_bin_path.display());
         tokio::task::spawn(tokio::fs::remove_file(old_bin_path));
     }
 
@@ -164,7 +165,7 @@ async fn run() {
             tokio::time::sleep(AUTOSTART_UPDATE_CHECK_DELAY).await;
         }
 
-        match provisioning::update::update().await {
+        match provisioning::update().await {
             Ok(true) => update_restart_tx.send(()).unwrap(),
             Ok(false) => {}
             Err(e) => error!("App update failed: {e:#}"),
