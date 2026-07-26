@@ -1,5 +1,6 @@
 use std::{
     env,
+    ffi::OsString,
     io::Write,
     path::{Path, PathBuf},
     process::Stdio,
@@ -237,17 +238,21 @@ async fn update_via_exe_swap(tmp_bin_path: &Path, current_exe: &Path) -> anyhow:
 }
 
 fn restart(new_exe: &Path, via_msi: bool) -> anyhow::Result<()> {
-    let mut command = std::process::Command::new(new_exe);
-    command.args(env::args().skip(1));
+    let mut args: Vec<OsString> = env::args_os().skip(1).collect();
+
+    args.retain(|arg| arg != "--singleton-wait-for-shutdown");
+    args.push("--singleton-wait-for-shutdown".into());
 
     if !via_msi {
-        command
-            .arg("--update-old-bin")
-            .arg(new_exe.with_extension("exe.bak"));
+        if let Some(pos) = args.iter().position(|arg| arg == "--update-old-bin") {
+            args.drain(pos..pos + 2);
+        }
+        args.push("--update-old-bin".into());
+        args.push(new_exe.with_extension("exe.bak").into());
     }
 
-    command
-        .arg("--singleton-wait-for-shutdown")
+    std::process::Command::new(new_exe)
+        .args(args)
         .stdin(Stdio::inherit())
         .spawn()
         .context("Error spawning process")?;
