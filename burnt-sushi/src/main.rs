@@ -24,7 +24,7 @@ use windows_sys::Win32::{
 };
 
 use std::{
-    env, io, num::NonZero, os::windows::prelude::FromRawHandle, sync::LazyLock, time::Duration,
+    env, io, num::NonZero, os::windows::prelude::FromRawHandle, path::PathBuf, sync::LazyLock, time::Duration,
 };
 
 use crate::{
@@ -73,19 +73,7 @@ async fn main() {
         }
     }
 
-    let mut log_file = ARGS.log_file.clone();
-    if log_file.is_none() && ARGS.log_level == LogLevel::Debug {
-        let mut auto_log_file = dirs::data_local_dir();
-        if let Some(ref mut log_file) = auto_log_file {
-            log_file.push("OpenByte");
-            log_file.push("BurntSushi");
-            log_file.push("BurntSushi.log");
-        }
-        log_file = auto_log_file;
-    }
-    if let Some(log_file) = log_file {
-        logger::global::get().file = Some(FileLog::new(log_file));
-    }
+    configure_log_file(ARGS.log_file.clone());
 
     info!("{APP_NAME_WITH_VERSION}");
     trace!(
@@ -148,6 +136,21 @@ async fn main() {
     }
 
     logger::global::unset();
+}
+
+fn configure_log_file(mut path: Option<PathBuf>) {
+    if path.is_none() && ARGS.log_level == LogLevel::Debug {
+        let mut auto_log_file = dirs::data_local_dir();
+        if let Some(ref mut log_file) = auto_log_file {
+            log_file.push("OpenByte");
+            log_file.push("BurntSushi");
+            log_file.push("BurntSushi.log");
+        }
+        path = auto_log_file;
+    }
+    if let Some(log_file) = path {
+        logger::global::get().file = Some(FileLog::new(log_file));
+    }
 }
 
 async fn run() {
